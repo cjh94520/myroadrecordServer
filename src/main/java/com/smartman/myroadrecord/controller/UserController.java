@@ -3,23 +3,34 @@ package com.smartman.myroadrecord.controller;
 import com.smartman.myroadrecord.model.User;
 import com.smartman.myroadrecord.service.UserService;
 import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.springframework.web.context.ServletConfigAware;
+import org.springframework.web.context.ServletContextAware;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.multipart.MultipartResolver;
+import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.AbstractController;
 
 import javax.annotation.Resource;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
-import java.io.File;
-import java.io.IOException;
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
@@ -32,7 +43,8 @@ import java.util.UUID;
  */
 @Controller
 @RequestMapping(value = "/user")
-public class UserController {
+public class UserController{
+
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     @Resource
     private UserService userService;
@@ -41,10 +53,9 @@ public class UserController {
 
     /**
      * 查询用户是否存在
-     *
      * @return boolean
      */
-    @RequestMapping(value = "/check", method = RequestMethod.GET)
+    @RequestMapping(value = "/check")
     @ResponseBody
     public boolean check() {
         String id = request.getParameter("id");
@@ -109,41 +120,23 @@ public class UserController {
      */
     @RequestMapping(value = "/uploadImg")
     @ResponseBody
-    public Boolean uploadImg() {
-        logger.debug("--------------------uploadImg start()-------------------");
-        MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
-        SimpleDateFormat dateformat = new SimpleDateFormat("yyyy/MM/dd/HH");
-        /** 构建文件保存的目录* */
-        String logoPathDir = "/upload/"
-                + dateformat.format(new Date());
-        /** 得到文件保存目录的真实路径* */
-        String logoRealPathDir = request.getSession().getServletContext()
-                .getRealPath(logoPathDir);
-        /** 根据真实路径创建目录* */
-        File logoSaveFile = new File(logoRealPathDir);
-        if (!logoSaveFile.exists())
-            logoSaveFile.mkdirs();
-        /** 页面控件的文件流* */
-        MultipartFile multipartFile = multipartRequest.getFile("file");
-        /** 获取文件的后缀* */
-        String suffix = multipartFile.getOriginalFilename().substring(
-                multipartFile.getOriginalFilename().lastIndexOf("."));
-        /** 使用UUID生成文件名称* */
-        String logImageName = UUID.randomUUID().toString() + suffix;// 构建文件名称
-        /** 拼成完整的文件保存路径加文件* */
-        String fileName = logoRealPathDir + File.separator + logImageName;
-        File file = new File(fileName);
+    public Boolean uploadImg(@RequestParam(value = "file", required = false) MultipartFile file) {
+        System.out.println("开始");
+        String path = request.getSession().getServletContext().getRealPath("upload");
+        System.out.println(path);
+        String fileName = file.getOriginalFilename();
+        File targetFile = new File(path, fileName);
+        if(!targetFile.exists()){
+            targetFile.mkdirs();
+        }
+
+        //保存
         try {
-            multipartFile.transferTo(file);
-            return true;
-        } catch (IllegalStateException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+            file.transferTo(targetFile);
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        /** 打印出上传到服务器的文件的绝对路径* */
-        logger.debug("****************"+fileName+"**************");
-        return false;
+        return true;
     }
 
 }
