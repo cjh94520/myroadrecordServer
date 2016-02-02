@@ -25,7 +25,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public Boolean registerUser(User user) {
         int result = userMapper.insert(user);
-        if (result < 0) {
+        if (result <= 0) {
             return false;
         } else {
             return true;
@@ -64,10 +64,25 @@ public class UserServiceImpl implements UserService {
         }
         user.setPassword(password);
         int result = userMapper.updateByPrimaryKey(user);
-        if (result < 0) {
+        if (result <= 0) {
             return false;
         }
         return true;
     }
+
+    @Override
+    public Boolean insertImg(String id, String url) {
+        User user = selectByUsername(id);
+        if (user == null) {
+            return false;
+        }
+        user.setImageurl(url);
+        int result = userMapper.updateByPrimaryKey(user);
+        if (result <= 0) {
+            return false;
+        }
+        return true;
+    }
+
 
 }

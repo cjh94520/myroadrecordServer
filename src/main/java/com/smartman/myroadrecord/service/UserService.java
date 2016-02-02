@@ -41,4 +41,11 @@ public interface UserService {
      * @return
      */
     Boolean updatePassword(String id ,String password);
+
+    /**
+     * 插入用户头像
+     * @param id
+     * @return
+     */
+    Boolean insertImg(String id ,String url);
 }

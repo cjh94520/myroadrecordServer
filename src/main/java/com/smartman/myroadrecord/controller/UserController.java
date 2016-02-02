@@ -5,9 +5,14 @@ import com.smartman.myroadrecord.service.UserService;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -43,7 +48,7 @@ import java.util.UUID;
  */
 @Controller
 @RequestMapping(value = "/user")
-public class UserController{
+public class UserController {
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     @Resource
@@ -53,6 +58,7 @@ public class UserController{
 
     /**
      * 查询用户是否存在
+     *
      * @return boolean
      */
     @RequestMapping(value = "/check")
@@ -115,28 +121,72 @@ public class UserController{
 
     /**
      * 上传用户头像
+     * 文件名为id+格式
      *
      * @return Boolean
      */
     @RequestMapping(value = "/uploadImg")
     @ResponseBody
     public Boolean uploadImg(@RequestParam(value = "file", required = false) MultipartFile file) {
-        System.out.println("开始");
+        System.out.println("-----------开始上传文件了--------------");
         String path = request.getSession().getServletContext().getRealPath("upload");
-        System.out.println(path);
-        String fileName = file.getOriginalFilename();
+        String id = request.getParameter("id");
+        String originalName = file.getOriginalFilename();
+        int splits = originalName.indexOf(".");
+        String fileName = id + originalName.substring(splits);
         File targetFile = new File(path, fileName);
-        if(!targetFile.exists()){
+        System.out.print(targetFile.getAbsolutePath());
+        if (!targetFile.exists()) {
             targetFile.mkdirs();
         }
-
         //保存
         try {
             file.transferTo(targetFile);
+            userService.insertImg(id, targetFile.getAbsolutePath());
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
+        System.out.println("-----------上传文件结束了--------------");
         return true;
     }
+
+    /**
+     * 下载用户头像
+     *
+     * @return Boolean
+     */
+    @RequestMapping(value = "/downloadImg")
+    public ResponseEntity<byte[]> downloadImg() throws IOException {
+        HttpHeaders headers = new HttpHeaders();
+        String path = request.getSession().getServletContext().getRealPath("upload");
+        String id = request.getParameter("id");
+        File file = new File(path);
+        File finalFile = null;
+        if (file.isDirectory()) {
+            for (File temp : file.listFiles()) {
+                if (temp.getName().startsWith(id)) {
+                    finalFile = temp;
+                    break;
+                }
+            }
+        }
+        if (finalFile == null) {
+            return null;
+        }
+        String type = finalFile.getName().toLowerCase();
+        if (type.endsWith("png")) {
+            headers.setContentType(MediaType.IMAGE_PNG);
+        } else if (type.endsWith("jpg") || type.endsWith("jpeg")) {
+            headers.setContentType(MediaType.IMAGE_JPEG);
+        } else if (type.endsWith("gif")) {
+            headers.setContentType(MediaType.IMAGE_GIF);
+        } else {
+            return null;
+        }
+        headers.setContentDispositionFormData("attachment", finalFile.getName());
+        return new ResponseEntity<byte[]>(FileUtils.readFileToByteArray(finalFile), headers, HttpStatus.CREATED);
+    }
+
 
 }
